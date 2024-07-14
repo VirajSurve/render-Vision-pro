@@ -75,7 +75,7 @@ const Camera = () => {
         const filename = "image1.jpeg"; // Name of the temporary file
         const mimeType = "image/jpeg"; // Correct MIME type
   
-        const result = await axios.post("http://localhost:3001/upload", {
+        const result = await axios.post("https://render-vision-pro-backend.onrender.com/upload", {
           base64Image,
           mimeType,
           filename,
@@ -110,7 +110,7 @@ const Camera = () => {
     setMessages([...messages, { txt: userText, isBot: false }]);
 
     if (capturedImage) {
-      const result=await axios.post("http://localhost:3001/chat",{
+      const result=await axios.post("https://render-vision-pro-backend.onrender.com/chat",{
         userText,
       });
       const responseText = result.data;
