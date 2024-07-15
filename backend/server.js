@@ -61,48 +61,40 @@ const generationConfig = {
   responseMimeType: "text/plain",
 };
 
-// (async () => {
-//   try {
-//     chatSession = await model.startChat({
-//       generationConfig,
-//       history: [],
-//     });
-//     console.log('Chat session initialized successfully');
-//   } catch (error) {
-//     console.error('Error initializing chat session:', error);
-//   }
-// })();
-
 app.post('/upload', async (req, res) => {
   const { base64Image, mimeType, filename } = req.body;
   console.log("Received upload request with data:", { base64Image: base64Image.substring(0, 30) + "...", mimeType, filename });
+
   try {
     const file = await uploadBase64ToGemini(base64Image, mimeType, filename);
     if (!file) {
       throw new Error('Failed to upload file');
     }
 
-    // Ensure chatSession is initialized
-    // if (!chatSession) {
-      chatSession = await model.startChat({
-        generationConfig,
-        history: [
-          {
-            role: "user",
-            parts: [
-              {
-                fileData: {
-                  mimeType: file.mimeType,
-                  fileUri: file.uri,
-                },
+    chatSession = await model.startChat({
+      generationConfig,
+      history: [
+        {
+          role: "user",
+          parts: [
+            {
+              fileData: {
+                mimeType: file.mimeType,
+                fileUri: file.uri,
               },
-            ],
-          },
-        ],
-      });
-    // }
+              text: "Please describe the uploaded image."
+            },
+          ],
+        },
+      ],
+    });
 
-    const result = await chatSession.sendMessage("");
+    const result = await chatSession.sendMessage("Please describe the uploaded image.", {
+      fileData: {
+        mimeType: file.mimeType,
+        fileUri: file.uri,
+      },
+    });
     const responseText = await result.response.text();
     console.log("Chat session response:", responseText);
     res.json(responseText);
@@ -114,21 +106,16 @@ app.post('/upload', async (req, res) => {
 
 app.post('/chat', async (req, res) => {
   const { userText } = req.body;
-  if (!userText || userText.trim() === '') {
-    return res.status(400).json({ error: 'Empty message' });
-  }
   try {
     const result = await chatSession.sendMessage(userText);
-    console.log(result.response.text());
-    res.json(result.response.text());
+    const responseText = await result.response.text();
+    console.log("Chat session response:", responseText);
+    res.json(responseText);
   } catch (err) {
     console.error("Error (server) in sending the text", err);
     res.status(500).json({ error: 'Failed to send message', details: err.message });
   }
 });
-
-
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
