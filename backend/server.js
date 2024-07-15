@@ -1,28 +1,33 @@
 import express from 'express';
-import cors from 'cors'; // Import cors package
+import cors from 'cors';
 import bodyParser from 'body-parser';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from "url";
-import 'dotenv/config';
 
-const port =process.env.PORT || 3001;
-// Your actual API key
-const apiKey = "AIzaSyD2JwFzqCf9bzMtm2TsdZzrd2_td-RW6CE"; // Replace with your actual API key
+const apiKey = "AIzaSyD2JwFzqCf9bzMtm2TsdZzrd2_td-RW6CE"; 
 const genAI = new GoogleGenerativeAI(apiKey);
 const fileManager = new GoogleAIFileManager(apiKey);
 
-// Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors()); // Use cors middleware
+app.use(cors({
+  origin: "https://vercel-vision-pro-client.vercel.app",
+  methods: ["POST", "GET"],
+  credentials: true
+}));
+app.options('*', cors());
+
 app.use(bodyParser.json());
 
-// Initialize chat session outside of endpoints
+app.get("/", (req, res) => {
+  res.json("Hello");
+});
+
 let chatSession;
 
 async function uploadBase64ToGemini(base64Data, mimeType, filename) {
@@ -56,10 +61,9 @@ const generationConfig = {
   responseMimeType: "text/plain",
 };
 
-// Initialize chat session here
 (async () => {
   try {
-    const chatSession = await model.startChat({
+    chatSession = await model.startChat({
       generationConfig,
       history: [],
     });
@@ -69,46 +73,45 @@ const generationConfig = {
   }
 })();
 
-
 app.post('/upload', async (req, res) => {
-    const { base64Image, mimeType, filename } = req.body;
-    try {
-      const file = await uploadBase64ToGemini(base64Image, mimeType, filename);
-      if (!file) {
+  const { base64Image, mimeType, filename } = req.body;
+  console.log("Received upload request with data:", { base64Image: base64Image.substring(0, 30) + "...", mimeType, filename });
+  try {
+     const file = await uploadBase64ToGemini(base64Image, mimeType, filename);
+     if (!file) {
         throw new Error('Failed to upload file');
-      }
-  
-    //   // Ensure chatSession is initialized
-    //   if (!chatSession) {
-    //     throw new Error('Chat session not initialized');
-    //   }
+     }
 
-    chatSession = model.startChat({
-        generationConfig,
-        history: [
-          {
-            role: "user",
-            parts: [
+     // Ensure chatSession is initialized
+     if (!chatSession) {
+        chatSession = await model.startChat({
+           generationConfig,
+           history: [
               {
-                fileData: {
-                  mimeType: file.mimeType,
-                  fileUri: file.uri,
-                },
+                 role: "user",
+                 parts: [
+                    {
+                       fileData: {
+                          mimeType: file.mimeType,
+                          fileUri: file.uri,
+                       },
+                    },
+                 ],
               },
-            ],
-          },
-        ],
-      });
-  
-      const result = await chatSession.sendMessage("what do you see");
-      console.log(result.response.text());
-      res.json(result.response.text());
-    } catch (error) {
-      console.error('Error (Server) uploading file:', error);
-      res.status(500).json({ error: 'Failed to process request' });
-    }
-  });
-  
+           ],
+        });
+     }
+
+     const result = await chatSession.sendMessage("what do you see");
+     const responseText = await result.response.text();
+     console.log("Chat session response:", responseText);
+     res.json(responseText);
+  } catch (error) {
+     console.error('Error (Server) uploading file:', error);
+     res.status(500).json({ error: 'Failed to process request', details: error.message });
+  }
+});
+
 
 app.post('/chat', async (req, res) => {
   const { userText } = req.body;
@@ -118,11 +121,11 @@ app.post('/chat', async (req, res) => {
     res.json(result.response.text());
   } catch (err) {
     console.error("Error (server) in sending the text", err);
-    res.status(500).json({ error: 'Failed to send message' });
+    res.status(500).json({ error: 'Failed to send message', details: err.message });
   }
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log('Server is running on port',port);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
-
