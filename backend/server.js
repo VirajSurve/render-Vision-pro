@@ -83,7 +83,7 @@ app.post('/upload', async (req, res) => {
     }
 
     // Ensure chatSession is initialized
-    if (!chatSession) {
+    // if (!chatSession) {
       chatSession = await model.startChat({
         generationConfig,
         history: [
@@ -100,7 +100,7 @@ app.post('/upload', async (req, res) => {
           },
         ],
       });
-    }
+    // }
 
     const result = await chatSession.sendMessage("");
     const responseText = await result.response.text();
