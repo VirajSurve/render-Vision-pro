@@ -102,7 +102,7 @@ app.post('/upload', async (req, res) => {
         });
      }
 
-     const result = await chatSession.sendMessage("what do you see");
+     const result = await chatSession.sendMessage("");
      const responseText = await result.response.text();
      console.log("Chat session response:", responseText);
      res.json(responseText);
